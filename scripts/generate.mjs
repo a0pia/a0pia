@@ -14,7 +14,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOGIN = process.env.GITHUB_REPOSITORY_OWNER || 'a0pia';
 const TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 const DISPLAY_NAME = 'Aopia';
-const TAGLINE = 'Developer · Jedi in training';
+const TAGLINE = 'Developer · Sith apprentice';
 const W = 880;
 const H = 480;
 
@@ -114,42 +114,46 @@ function text(str, x, y, px, fill) {
 // ---------------------------------------------------------------- sprites
 
 const SPRITES = {
-  xwing: [
-    '.GG.........................',
-    '.GGG........................',
-    '..GGGGGGGGGGGGGGGGGGGGGK....',
-    'OGGWWWWWWWWWRRWWWW..........',
-    'OGWWWWWWWWWWWWWWWWWWWWWWW...',
-    'OGWWWWWWBBBWWWWWWWWWWWWWWWWW',
-    'OGGWWWWWWWWWRRWWWW..........',
-    '..GGGGGGGGGGGGGGGGGGGGGK....',
-    '.GGG........................',
-    '.GG.........................',
+  // Hooded Sith facing right; the saber hand is at columns 11-13 of rows 9-10.
+  sith: [
+    '....LKKKK.....',
+    '...LKKKKKK....',
+    '..LKKKKKKKR...',
+    '..LKKDDDDKR...',
+    '..LKDDDYDDR...',
+    '..LKKDDDDKR...',
+    '...LKKKKKR....',
+    '..LKKKKKKKR...',
+    '.LKKKKKKKKKR..',
+    '.LKKKKKKKKKSSS',
+    '.LKKKKKKKKKSSS',
+    '.LKKKGGGKKKR..',
+    '.LKKKKKKKKKR..',
+    '.LKKKKKKKKKR..',
+    '.LKKKKKKKKKKR.',
+    'LKKKKKKKKKKKR.',
+    'LKKKKKKKKKKKKR',
+    'LKKKKKKKKKKKKR',
+    '.LKKKKKKKKKKR.',
+    '..KKK....KKK..',
+    '..KKK....KKK..',
+    '.BBBB....BBBB.',
   ],
-  tie: [
-    'GG.........GG',
-    'GG.........GG',
-    'GG.........GG',
-    'GG...DDD...GG',
-    'GGLLDBBBDLLGG',
-    'GG..DBWBD..GG',
-    'GGLLDBBBDLLGG',
-    'GG...DDD...GG',
-    'GG.........GG',
-    'GG.........GG',
-    'GG.........GG',
+  // Alien facing left, split at the neck so the saber can cut it in two.
+  alienHead: [
+    '..A......A..',
+    '...A....A...',
+    '...GGGGGG...',
+    '..GGGGGGGG..',
+    '.GGWWGGWWGG.',
+    '.GPWGGPWGGG.',
+    '.GGGGGGGGGG.',
+    '..GGDDDDGG..',
+    '...GGGGGG...',
   ],
-  boom: [
-    '....Y....',
-    '.Y..O..Y.',
-    '..OOOOO..',
-    '..OYWYO..',
-    'YOOWWWOOY',
-    '..OYWYO..',
-    '..OOOOO..',
-    '.Y..O..Y.',
-    '....Y....',
-  ],
+  alienBody: ['..GGGGGGGG..', '.G.GGGGGG.G.', '...GGGGGG...'],
+  legsA: ['...G....G...', '..GG....GG..'],
+  legsB: ['....G..G....', '....GG.GG...'],
   hilt: [
     '..KK..............',
     'GGGGSSGGSSGGGGGGKK',
@@ -164,9 +168,11 @@ const SPRITES = {
   code: ['.......', '..#.#..', '.#...#.', '#.....#', '.#...#.', '..#.#..', '.......'],
 };
 
-const SHIP = { G: '#7d8590', W: '#d9dde3', R: '#e5484d', B: '#2b3138', O: '#ff9a3c', K: '#3d444d' };
-const TIE = { G: '#4a5361', L: '#7d8590', D: '#5c6573', B: '#2b3138', W: '#9fb4c8' };
-const BOOM = { Y: YELLOW, O: '#ff7a1a', W: '#fff6c8' };
+const SITH = { K: '#262a33', L: '#5d6577', R: '#6b1f26', D: '#08090c', Y: '#ffc933', S: '#2e323b', G: '#7d8590', B: '#121419' };
+const ALIENS = [
+  { G: '#5bd75b', A: '#3fa83f', W: '#ffffff', P: '#111111', D: '#1e5a1e' },
+  { G: '#b07cff', A: '#7d4fd1', W: '#ffffff', P: '#111111', D: '#4a2a80' },
+];
 
 function deathStar(cx, cy, r, px) {
   const shades = ['#2d3239', '#454c55', '#5f6771', '#7f8893', '#a3abb5'];
@@ -187,6 +193,21 @@ function deathStar(cx, cy, r, px) {
     }
   }
   return out;
+}
+
+// Volcanic ground with glowing lava cracks.
+function ground(rand, y, px) {
+  const rows = [];
+  for (let j = 0; j < Math.ceil((H - y) / px); j++) {
+    let row = '';
+    for (let i = 0; i < Math.ceil(W / px); i++) {
+      const r = rand();
+      row += j === 0 ? (r < 0.1 ? '.' : r < 0.5 ? 'T' : 'R') : r < 0.03 ? 'L' : r < 0.07 ? 'O' : r < 0.35 ? 'D' : 'R';
+    }
+    rows.push(row);
+  }
+  return `${pixels(rows, 0, y, px, { T: '#4a2f2c', R: '#2c1c1d', D: '#1e1415', O: '#8f3516' })}
+<g class="hum">${pixels(rows, 0, y, px, { L: '#ff7a1a' })}</g>`;
 }
 
 // ---------------------------------------------------------------- starfield
@@ -279,18 +300,23 @@ function card(stats) {
   const rand = rng(1977);
   const fmt = (n) => n.toLocaleString('en-US');
 
-  // Space battle: two TIE fighters take turns flying in and getting shot down.
-  // Both share one 6s cycle; the second runs half a cycle behind (.t2).
-  const laneMid = 384;
-  const lane = 22;
-  const xwX = 60;
-  const xwY = laneMid - 15;
-  const hitX = 430;
-  const bolt = (dy, cls) =>
-    `<rect class="${cls}" x="130" y="${xwY + dy}" width="22" height="3" rx="1.5" fill="#ff4d4d" filter="url(#glow)"/>`;
-  const tie = (dy, cls) => `
-<g transform="translate(0 ${laneMid + dy - 16})"><g class="${cls}"><g class="weave">${pixels(SPRITES.tie, 0, 0, 3, TIE)}</g></g></g>
-<g transform="translate(${hitX - 4} ${laneMid + dy - 18})"><g class="boom ${cls === 'tie' ? '' : 't2'}">${pixels(SPRITES.boom, 0, 0, 4, BOOM)}</g></g>`;
+  // Ground fight: aliens take turns walking up to the Sith and getting cut in half.
+  // Each alien loops every 8s with the second half a cycle behind (.a2); the
+  // saber swings every 4s, so it lands on whichever alien just arrived.
+  const groundY = 444;
+  const sithX = 84;
+  const sithY = groundY - SPRITES.sith.length * 4;
+  const [hx, hy] = [sithX + 50, sithY + 40];
+  const stopX = 178;
+  const alien = (n) => {
+    const pal = ALIENS[n];
+    const a2 = n ? ' a2' : '';
+    return `<g transform="translate(0 ${groundY - 42})"><g class="walk${a2}">
+<g class="head${a2}">${pixels(SPRITES.alienHead, 0, 0, 3, pal)}</g>
+<g class="body${a2}">${pixels(SPRITES.alienBody, 0, 27, 3, pal)}<g class="legs">${pixels(SPRITES.legsA, 0, 36, 3, pal)}</g><g class="legs alt">${pixels(SPRITES.legsB, 0, 36, 3, pal)}</g></g>
+</g></g>
+<g class="slash${a2}"><rect x="${stopX - 10}" y="${groundY - 17}" width="60" height="3" rx="1.5" fill="#fff" filter="url(#glow)" transform="rotate(25 ${stopX + 20} ${groundY - 15.5})"/></g>`;
+  };
 
   const stat = (i, icon, label, value) => {
     const x = 48 + i * 200;
@@ -317,13 +343,14 @@ ${text(fmt(value), x, 262, 5, '#f0f3f6')}
 .blade.l{transform-origin:left}.blade.r{transform-origin:right}
 .hum{animation:hum .15s linear 2s infinite alternate}
 .spark{transform-box:fill-box;transform-origin:center;animation:spark .9s steps(1) 1.95s infinite both}
-.xwing{animation:strafe 6s ease-in-out infinite}
-.thrust{animation:hum .1s linear infinite alternate}
-.tie{animation:fly 6s linear infinite}
-.weave{animation:weave 1.2s ease-in-out infinite}
-.bolt{animation:bolt 6s linear infinite}
-.boom{transform-box:fill-box;transform-origin:center;animation:boom 6s linear infinite}
-.t2{animation-delay:-3s}
+.legs{animation:blink .3s steps(1) infinite}.legs.alt{animation-delay:-.15s}
+.walk{animation:walk 8s linear infinite}
+.head{transform-box:fill-box;transform-origin:center;animation:head 8s ease-out infinite}
+.body{animation:body 8s ease-in infinite}
+.slash{animation:slash 8s linear infinite}
+.a2{animation-delay:-4s}
+.swing{transform-box:view-box;transform-origin:${hx}px ${hy}px;animation:swing 4s ease-out infinite}
+.lunge{animation:lunge 4s ease-out infinite}
 @keyframes twinkle{0%,100%{opacity:1}50%{opacity:.15}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -332,11 +359,13 @@ ${text(fmt(value), x, 262, 5, '#f0f3f6')}
 @keyframes ignite{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes hum{from{opacity:.7}to{opacity:1}}
 @keyframes spark{0%{opacity:1;transform:scale(1)}15%{opacity:0}35%{opacity:.9;transform:scale(.6) rotate(45deg)}50%{opacity:0}70%{opacity:1;transform:scale(1.2)}85%{opacity:0}}
-@keyframes strafe{0%,10%{transform:translateY(${lane}px)}25%,60%{transform:translateY(-${lane}px)}75%,100%{transform:translateY(${lane}px)}}
-@keyframes fly{0%{transform:translateX(${W + 20}px);opacity:1}50%{transform:translateX(${hitX}px);opacity:1}50.01%,100%{transform:translateX(${hitX}px);opacity:0}}
-@keyframes weave{0%,100%{transform:translateY(-3px)}50%{transform:translateY(3px)}}
-@keyframes bolt{0%,34.99%{transform:translateX(0);opacity:0}35%{transform:translateX(0);opacity:1}50%{transform:translateX(${hitX - 152}px);opacity:1}50.01%,100%{transform:translateX(${hitX - 152}px);opacity:0}}
-@keyframes boom{0%,49.99%{opacity:0;transform:scale(.2)}50%{opacity:1;transform:scale(.5)}62%{opacity:0;transform:scale(1.9)}100%{opacity:0;transform:scale(1.9)}}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes walk{0%{transform:translateX(${W + 20}px)}50%,100%{transform:translateX(${stopX}px)}}
+@keyframes head{0%,51.5%{transform:none;opacity:1}64%,100%{transform:translate(24px,-30px) rotate(50deg);opacity:0}}
+@keyframes body{0%,51.5%{transform:none;opacity:1}64%,100%{transform:translateY(4px);opacity:0}}
+@keyframes slash{0%,51%{opacity:0}51.5%{opacity:1}56%,100%{opacity:0}}
+@keyframes swing{0%{transform:rotate(-120deg)}3%,12%{transform:rotate(25deg)}30%,90%{transform:rotate(-60deg)}100%{transform:rotate(-120deg)}}
+@keyframes lunge{0%{transform:none}3%,12%{transform:translateX(10px)}30%,100%{transform:none}}
 </style>
 <defs>
 <clipPath id="card"><rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12"/></clipPath>
@@ -363,7 +392,7 @@ ${text(DISPLAY_NAME, 48, 66, 9, YELLOW)}
 </g>
 <g class="rise" style="animation-delay:1.2s">
 ${text(TAGLINE, 48, 146, 2, MUTED)}
-${text(`@${LOGIN} · joined the rebellion in ${stats.since}`, 48, 168, 2, DIM)}
+${text(`@${LOGIN} · turned to the dark side in ${stats.since}`, 48, 168, 2, DIM)}
 </g>
 
 <g transform="translate(48 ${sabers - 5})">${pixels(SPRITES.hilt, 0, 0, 2, { G: '#9aa3ad', S: '#5c6573', K: '#2b3138' })}</g>
@@ -377,16 +406,21 @@ ${stat(1, 'repo', 'repos', stats.repos)}
 ${stat(2, 'star', 'stars', stats.stars)}
 ${stat(3, 'code', 'languages', stats.languages)}
 
-${tie(-lane, 'tie')}
-${tie(lane, 'tie t2')}
-<g class="xwing">
-<rect class="thrust" x="${xwX - 7}" y="${xwY + 9}" width="9" height="12" rx="4" fill="#ff7a1a" filter="url(#glow)"/>
-${pixels(SPRITES.xwing, xwX, xwY, 3, SHIP)}
-${bolt(6, 'bolt')}${bolt(21, 'bolt')}
-${bolt(6, 'bolt t2')}${bolt(21, 'bolt t2')}
+${ground(rand, groundY, 4)}
+<ellipse class="hum" cx="${hx + 10}" cy="${groundY}" rx="70" ry="6" fill="#ff2a2a" opacity=".25" filter="url(#saber)"/>
+${alien(0)}
+${alien(1)}
+<g class="lunge">
+${pixels(SPRITES.sith, sithX, sithY, 4, SITH)}
+<g class="swing">
+<rect class="hum" x="${hx + 12}" y="${hy - 5}" width="84" height="10" rx="5" fill="#ff2a2a" filter="url(#saber)"/>
+<rect x="${hx + 12}" y="${hy - 2}" width="84" height="4" rx="2" fill="#ffe9e9"/>
+<rect x="${hx - 4}" y="${hy - 3}" width="16" height="6" fill="#9aa3ad"/>
+<rect x="${hx + 2}" y="${hy - 3}" width="2" height="6" fill="#2b3138"/>
+</g>
 </g>
 
-<g class="fade" style="animation-delay:2.8s">${text('may the source be with you', W - 48 - textWidth('may the source be with you', 2), H - 28, 2, DIM)}</g>
+<g class="fade" style="animation-delay:2.8s">${text('come to the dark side', W - 48 - textWidth('come to the dark side', 2), H - 22, 2, '#8a3a22')}</g>
 </g>
 <rect x=".5" y=".5" width="${W - 1}" height="${H - 1}" rx="12" fill="none" stroke="#1f2733"/>
 </svg>
