@@ -14,7 +14,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOGIN = process.env.GITHUB_REPOSITORY_OWNER || 'a0pia';
 const TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 const DISPLAY_NAME = 'Aopia';
-const TAGLINE = 'Developer · Sith apprentice';
+const TAGLINE = 'Developer · Sith Lord';
 const W = 880;
 const H = 480;
 
@@ -114,30 +114,40 @@ function text(str, x, y, px, fill) {
 // ---------------------------------------------------------------- sprites
 
 const SPRITES = {
-  // Hooded Sith facing right; the saber hand is at columns 11-13 of rows 9-10.
-  sith: [
-    '....LKKKK.....',
-    '...LKKKKKK....',
-    '..LKKKKKKKR...',
-    '..LKKDDDDKR...',
-    '..LKDDDYDDR...',
-    '..LKKDDDDKR...',
-    '...LKKKKKR....',
-    '..LKKKKKKKR...',
-    '.LKKKKKKKKKR..',
-    '.LKKKKKKKKKSSS',
-    '.LKKKKKKKKKSSS',
-    '.LKKKGGGKKKR..',
-    '.LKKKKKKKKKR..',
-    '.LKKKKKKKKKR..',
-    '.LKKKKKKKKKKR.',
-    'LKKKKKKKKKKKR.',
-    'LKKKKKKKKKKKKR',
-    'LKKKKKKKKKKKKR',
-    '.LKKKKKKKKKKR.',
-    '..KKK....KKK..',
-    '..KKK....KKK..',
-    '.BBBB....BBBB.',
+  // Hooded emperor, robes lit blue from the right by his own lightning.
+  emperorIdle: [
+    '....LKKKKKK.....',
+    '...LKKKKKKKK....',
+    '..LKKKKKKKKKK...',
+    '..LKKKKDDDDKKR..',
+    '..LKKKDFFFFDKR..',
+    '..LKKDFYFFYFKR..',
+    '..LKKDFFWFFFKR..',
+    '..LKKDFWFFWFKR..',
+    '..LKKKDFFFFDKR..',
+    '..LKKKKDFFDKKR..',
+    '..LKKKKKKKKKKR..',
+    '.LKKKKKKKKKKKKR.',
+    '.LKKKKKKKKKKKKR.',
+    '.LKKKKKKKKKKKKR.',
+    '.LKKKKKKKPPKKKR.',
+    '.LKKKKKKKKKKKKR.',
+    'LKKKKKKKKKKKKKKR',
+    'LKKKKKKKKKKKKKKR',
+    'LKKKKKKKKKKKKKKR',
+    'LKKKKKKKKKKKKKKR',
+    'LKKKKKKKKKKKKKKR',
+    'LKKKKKKKKKKKKKKR',
+    'LKKKKKKKKKKKKKKR',
+    '.KKKKKKKKKKKKKK.',
+  ],
+  // Same pose with both arms thrust forward; the hands are at column 21, row 13.
+  emperorCast: [
+    '.LKKKKKKKKKKKKKKKKR....',
+    '.LKKKKKKKKKKKKKKKKKKPP.',
+    '.LKKKKKKKKKKKKKKKKKKPPP',
+    '.LKKKKKKKKKKKKKKKKR.P..',
+    '.LKKKKKKKKKKKKR........',
   ],
   // Alien facing left, split at the neck so the saber can cut it in two.
   alienHead: [
@@ -152,6 +162,7 @@ const SPRITES = {
     '...GGGGGG...',
   ],
   alienBody: ['..GGGGGGGG..', '.G.GGGGGG.G.', '...GGGGGG...'],
+  ash: ['..#...#.....', '#....#...#..', '...#....#..#', '.#...#.#....', '....#.....#.', '#..#...#..#.'],
   legsA: ['...G....G...', '..GG....GG..'],
   legsB: ['....G..G....', '....GG.GG...'],
   hilt: [
@@ -168,7 +179,11 @@ const SPRITES = {
   code: ['.......', '..#.#..', '.#...#.', '#.....#', '.#...#.', '..#.#..', '.......'],
 };
 
-const SITH = { K: '#262a33', L: '#5d6577', R: '#6b1f26', D: '#08090c', Y: '#ffc933', S: '#2e323b', G: '#7d8590', B: '#121419' };
+// The casting pose only differs in the arm rows, so build it from the idle frame.
+SPRITES.emperorCast = SPRITES.emperorIdle.map((row, j) => (SPRITES.emperorCast[j - 11] ?? row).padEnd(23, '.'));
+
+const EMPEROR = { K: '#17181e', L: '#3c4050', R: '#2c3b5e', D: '#07070a', F: '#cbb7a2', W: '#8f7c69', Y: '#ffcf3a', P: '#cbb7a2' };
+const XRAY = { G: '#dff0ff', A: '#dff0ff', W: '#26304a', P: '#26304a', D: '#26304a' };
 const ALIENS = [
   { G: '#5bd75b', A: '#3fa83f', W: '#ffffff', P: '#111111', D: '#1e5a1e' },
   { G: '#b07cff', A: '#7d4fd1', W: '#ffffff', P: '#111111', D: '#4a2a80' },
@@ -193,6 +208,38 @@ function deathStar(cx, cy, r, px) {
     }
   }
   return out;
+}
+
+// A small Earth-like planet, lit from the upper left.
+function planet(cx, cy, r, px) {
+  let out = '';
+  for (let j = -r; j <= r; j++) {
+    for (let i = -r; i <= r; i++) {
+      const d2 = i * i + j * j;
+      if (d2 > r * r) continue;
+      const land = Math.sin(i * 0.8 + 1.3) + Math.cos(j * 0.9 - i * 0.4) > 0.75;
+      const cloud = Math.sin(i * 0.35 + j * 1.7) > 0.88;
+      const lit = (-i - j) / (r * 1.6) + 0.5 - d2 / (r * r * 3) > 0.15;
+      const fill = cloud ? (lit ? '#e8eef5' : '#9aa7b8') : land ? (lit ? '#5aa651' : '#2f5e2c') : lit ? '#3f86cf' : '#1f4a7d';
+      out += `<rect x="${cx + i * px - px / 2}" y="${cy + j * px - px / 2}" width="${px}" height="${px}" fill="${fill}"/>`;
+    }
+  }
+  return out;
+}
+
+// Jagged lightning from (x1, y1) to (x2, y2), with one short fork.
+function lightning(rand, x1, y1, x2, y2, steps, amp) {
+  const at = (t, jitter) => [
+    x1 + (x2 - x1) * t + (rand() - 0.5) * jitter * 0.4,
+    y1 + (y2 - y1) * t + (rand() - 0.5) * jitter,
+  ];
+  const pts = [[x1, y1]];
+  for (let i = 1; i < steps; i++) pts.push(at(i / steps, amp));
+  pts.push([x2, y2]);
+  const [fx, fy] = pts[Math.ceil(steps / 2)];
+  const fork = [[fx, fy], [fx + amp * 0.6, fy + (rand() - 0.5) * amp * 1.4], [fx + amp * 1.1, fy + (rand() - 0.5) * amp * 2]];
+  const line = (p, w) => `<polyline stroke-width="${w}" points="${p.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}"/>`;
+  return line(pts, 2) + line(fork, 1);
 }
 
 // Volcanic ground with glowing lava cracks.
@@ -300,23 +347,57 @@ function card(stats) {
   const rand = rng(1977);
   const fmt = (n) => n.toLocaleString('en-US');
 
-  // Ground fight: aliens take turns walking up to the Sith and getting cut in half.
-  // Each alien loops every 8s with the second half a cycle behind (.a2); the
-  // saber swings every 4s, so it lands on whichever alien just arrived.
+  // One 16s timeline. Aliens walk in on an 8s loop each (the second half a cycle
+  // behind, .a2), so one arrives every 4s and the emperor zaps it on arrival.
+  // At 14s he turns his lightning on the planet instead.
+  const T = 16;
+  const pct = (sec) => +((sec / T) * 100).toFixed(3);
+  const zapAt = [0, 4, 8, 12];
+  const planetAt = 14;
+  // steps(1) keyframes that switch opacity on during each [start, end) window.
+  const windows = (spans, on = 1, off = 0) =>
+    `0%{opacity:${off}}${spans.map(([a, b]) => `${pct(a)}%{opacity:${on}}${pct(b)}%{opacity:${off}}`).join('')}100%{opacity:${off}}`;
+  const alienSpans = zapAt.map((t) => [t, t + 0.6]);
+  const castSpans = [...alienSpans, [planetAt, planetAt + 0.75]];
+
   const groundY = 444;
-  const sithX = 84;
-  const sithY = groundY - SPRITES.sith.length * 4;
-  const [hx, hy] = [sithX + 50, sithY + 40];
-  const stopX = 178;
+  const ex = 56;
+  const ey = groundY - SPRITES.emperorIdle.length * 4;
+  const [hx, hy] = [ex + 86, ey + 54];
+  const stopX = 250;
   const alien = (n) => {
     const pal = ALIENS[n];
     const a2 = n ? ' a2' : '';
+    const legs = (p) =>
+      `<g class="legs">${pixels(SPRITES.legsA, 0, 36, 3, p)}</g><g class="legs alt">${pixels(SPRITES.legsB, 0, 36, 3, p)}</g>`;
     return `<g transform="translate(0 ${groundY - 42})"><g class="walk${a2}">
-<g class="head${a2}">${pixels(SPRITES.alienHead, 0, 0, 3, pal)}</g>
-<g class="body${a2}">${pixels(SPRITES.alienBody, 0, 27, 3, pal)}<g class="legs">${pixels(SPRITES.legsA, 0, 36, 3, pal)}</g><g class="legs alt">${pixels(SPRITES.legsB, 0, 36, 3, pal)}</g></g>
+<g>${pixels(SPRITES.alienHead, 0, 0, 3, pal)}${pixels(SPRITES.alienBody, 0, 27, 3, pal)}${legs(pal)}</g>
+<g class="xray${a2}">${pixels(SPRITES.alienHead, 0, 0, 3, XRAY)}${pixels(SPRITES.alienBody, 0, 27, 3, XRAY)}${legs(XRAY)}</g>
 </g></g>
-<g class="slash${a2}"><rect x="${stopX - 10}" y="${groundY - 17}" width="60" height="3" rx="1.5" fill="#fff" filter="url(#glow)" transform="rotate(25 ${stopX + 20} ${groundY - 15.5})"/></g>`;
+<g transform="translate(${stopX} ${groundY - 30})"><g class="ash${a2}">${pixels(SPRITES.ash, 0, 0, 3, { '#': '#6b6f78' })}</g></g>`;
   };
+  const zapGroup = (cls, makeBolts) =>
+    `<g class="${cls}" fill="none" stroke="#e4f2ff" stroke-linecap="round" stroke-linejoin="round" filter="url(#zap)">${[0, 1, 2]
+      .map((v) => `<g class="flick v${v}">${makeBolts()}</g>`)
+      .join('')}</g>`;
+  const alienBolts = () =>
+    [0, 1, 2]
+      .map(() => lightning(rand, hx, hy, stopX + 6 + rand() * 24, groundY - 36 + rand() * 28, 6, 18))
+      .join('');
+
+  const [pcx, pcy, pr, ppx] = [700, 346, 9, 4];
+  const planetBolts = () =>
+    [0, 1].map(() => lightning(rand, hx, hy, pcx - pr * ppx + rand() * 10, pcy - 14 + rand() * 28, 14, 34)).join('');
+  const debris = Array.from({ length: 18 }, (_, k) => {
+    const a = (k / 18) * Math.PI * 2 + rand() * 0.3;
+    const d = 70 + rand() * 90;
+    const size = 4 + Math.floor(rand() * 5);
+    const fill = ['#3f86cf', '#5aa651', '#e8eef5', '#ff9a3c', '#ffd27a'][k % 5];
+    return {
+      css: `.d${k}{animation:d${k} ${T}s ease-out infinite}@keyframes d${k}{0%,${pct(planetAt + 0.6) - 0.01}%{opacity:0;transform:none}${pct(planetAt + 0.6)}%{opacity:1;transform:none}${pct(planetAt + 1.4)}%{opacity:1}${pct(planetAt + 1.9)}%,100%{opacity:0;transform:translate(${(Math.cos(a) * d).toFixed(1)}px,${(Math.sin(a) * d * 0.7).toFixed(1)}px) rotate(${Math.floor(rand() * 360)}deg)}}`,
+      svg: `<rect class="debris d${k}" x="${pcx - size / 2}" y="${pcy - size / 2}" width="${size}" height="${size}" fill="${fill}"/>`,
+    };
+  });
 
   const stat = (i, icon, label, value) => {
     const x = 48 + i * 200;
@@ -344,13 +425,21 @@ ${text(fmt(value), x, 262, 5, '#f0f3f6')}
 .hum{animation:hum .15s linear 2s infinite alternate}
 .spark{transform-box:fill-box;transform-origin:center;animation:spark .9s steps(1) 1.95s infinite both}
 .legs{animation:blink .3s steps(1) infinite}.legs.alt{animation-delay:-.15s}
-.walk{animation:walk 8s linear infinite}
-.head{transform-box:fill-box;transform-origin:center;animation:head 8s ease-out infinite}
-.body{animation:body 8s ease-in infinite}
-.slash{animation:slash 8s linear infinite}
+.walk{animation:walk 8s linear infinite,gone 8s steps(1) infinite}
+.xray{animation:xray 8s steps(1) infinite}
+.ash{animation:ash 8s ease-out infinite}
 .a2{animation-delay:-4s}
-.swing{transform-box:view-box;transform-origin:${hx}px ${hy}px;animation:swing 4s ease-out infinite}
-.lunge{animation:lunge 4s ease-out infinite}
+.flick{animation:flick .21s steps(1) infinite}.v1{animation-delay:-.07s}.v2{animation-delay:-.14s}
+.cast{animation:cast ${T}s steps(1) infinite}
+.idle{animation:idle ${T}s steps(1) infinite}
+.zapA{animation:zapA ${T}s steps(1) infinite}
+.zapP{animation:zapP ${T}s steps(1) infinite}
+.planet{transform-box:fill-box;transform-origin:center;animation:planet ${T}s ease-in-out infinite}
+.pflash{animation:pflash ${T}s linear infinite}
+.shock{transform-box:fill-box;transform-origin:center;animation:shock ${T}s ease-out infinite}
+.power{animation:power ${T}s steps(1) infinite}
+.debris{transform-box:fill-box;transform-origin:center}
+${debris.map((d) => d.css).join('\n')}
 @keyframes twinkle{0%,100%{opacity:1}50%{opacity:.15}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -361,17 +450,25 @@ ${text(fmt(value), x, 262, 5, '#f0f3f6')}
 @keyframes spark{0%{opacity:1;transform:scale(1)}15%{opacity:0}35%{opacity:.9;transform:scale(.6) rotate(45deg)}50%{opacity:0}70%{opacity:1;transform:scale(1.2)}85%{opacity:0}}
 @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
 @keyframes walk{0%{transform:translateX(${W + 20}px)}50%,100%{transform:translateX(${stopX}px)}}
-@keyframes head{0%,51.5%{transform:none;opacity:1}64%,100%{transform:translate(24px,-30px) rotate(50deg);opacity:0}}
-@keyframes body{0%,51.5%{transform:none;opacity:1}64%,100%{transform:translateY(4px);opacity:0}}
-@keyframes slash{0%,51%{opacity:0}51.5%{opacity:1}56%,100%{opacity:0}}
-@keyframes swing{0%{transform:rotate(-120deg)}3%,12%{transform:rotate(25deg)}30%,90%{transform:rotate(-60deg)}100%{transform:rotate(-120deg)}}
-@keyframes lunge{0%{transform:none}3%,12%{transform:translateX(10px)}30%,100%{transform:none}}
+@keyframes gone{0%{opacity:1}57.5%,100%{opacity:0}}
+@keyframes xray{0%{opacity:0}50%{opacity:1}51%{opacity:0}52%{opacity:1}53%{opacity:0}54%{opacity:1}55%{opacity:0}56%{opacity:1}57.5%,100%{opacity:0}}
+@keyframes ash{0%,57.4%{opacity:0;transform:none}57.5%{opacity:1;transform:none}72%,100%{opacity:0;transform:translate(8px,-26px)}}
+@keyframes flick{0%{opacity:1}33.3%,100%{opacity:0}}
+@keyframes cast{${windows(castSpans)}}
+@keyframes idle{${windows(castSpans, 0, 1)}}
+@keyframes zapA{${windows(alienSpans)}}
+@keyframes zapP{${windows([[planetAt, planetAt + 0.6]])}}
+@keyframes planet{0%{opacity:0;transform:scale(.3)}${pct(1.2)}%{opacity:1;transform:scale(1)}${pct(planetAt + 0.58)}%{opacity:1;transform:scale(1)}${pct(planetAt + 0.6)}%,100%{opacity:0;transform:scale(1.2)}}
+@keyframes pflash{0%,${pct(planetAt + 0.2)}%{opacity:0}${pct(planetAt + 0.6)}%{opacity:.95}${pct(planetAt + 1.2)}%,100%{opacity:0}}
+@keyframes shock{0%,${pct(planetAt + 0.59)}%{opacity:0;transform:scale(.2)}${pct(planetAt + 0.6)}%{opacity:1;transform:scale(.3)}${pct(planetAt + 1.8)}%,100%{opacity:0;transform:scale(3.4)}}
+@keyframes power{${windows([[planetAt, planetAt + 1.6]])}}
 </style>
 <defs>
 <clipPath id="card"><rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="12"/></clipPath>
 <radialGradient id="nebulaA" cx="0.82" cy="0.78" r="0.55"><stop offset="0" stop-color="#1d3a7a" stop-opacity=".45"/><stop offset="1" stop-color="#1d3a7a" stop-opacity="0"/></radialGradient>
 <radialGradient id="nebulaB" cx="0.12" cy="0.1" r="0.45"><stop offset="0" stop-color="#4a1f5e" stop-opacity=".35"/><stop offset="1" stop-color="#4a1f5e" stop-opacity="0"/></radialGradient>
 <filter id="glow" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="zap" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feGaussianBlur stdDeviation="3" result="b"/><feColorMatrix in="b" type="matrix" values="0 0 0 0 .37 0 0 0 0 .66 0 0 0 0 1 0 0 0 2.5 0" result="c"/><feMerge><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 <filter id="saber" x="-10%" y="-300%" width="120%" height="700%"><feGaussianBlur stdDeviation="5"/></filter>
 </defs>
 <g clip-path="url(#card)">
@@ -406,19 +503,20 @@ ${stat(1, 'repo', 'repos', stats.repos)}
 ${stat(2, 'star', 'stars', stats.stars)}
 ${stat(3, 'code', 'languages', stats.languages)}
 
+<g class="planet">${planet(pcx, pcy, pr, ppx)}</g>
+<circle class="pflash" cx="${pcx}" cy="${pcy}" r="${pr * ppx + 4}" fill="#f2f8ff" filter="url(#zap)"/>
+<ellipse class="shock" cx="${pcx}" cy="${pcy}" rx="${pr * ppx}" ry="${pr * ppx * 0.28}" fill="none" stroke="#bfe3ff" stroke-width="3" filter="url(#zap)"/>
+${debris.map((d) => d.svg).join('')}
+
 ${ground(rand, groundY, 4)}
-<ellipse class="hum" cx="${hx + 10}" cy="${groundY}" rx="70" ry="6" fill="#ff2a2a" opacity=".25" filter="url(#saber)"/>
+<g class="cast"><ellipse cx="${hx}" cy="${groundY}" rx="90" ry="7" fill="#5ea8ff" opacity=".35" filter="url(#saber)"/></g>
 ${alien(0)}
 ${alien(1)}
-<g class="lunge">
-${pixels(SPRITES.sith, sithX, sithY, 4, SITH)}
-<g class="swing">
-<rect class="hum" x="${hx + 12}" y="${hy - 5}" width="84" height="10" rx="5" fill="#ff2a2a" filter="url(#saber)"/>
-<rect x="${hx + 12}" y="${hy - 2}" width="84" height="4" rx="2" fill="#ffe9e9"/>
-<rect x="${hx - 4}" y="${hy - 3}" width="16" height="6" fill="#9aa3ad"/>
-<rect x="${hx + 2}" y="${hy - 3}" width="2" height="6" fill="#2b3138"/>
-</g>
-</g>
+<g class="idle">${pixels(SPRITES.emperorIdle, ex, ey, 4, EMPEROR)}</g>
+<g class="cast">${pixels(SPRITES.emperorCast, ex, ey, 4, EMPEROR)}</g>
+${zapGroup('zapA', alienBolts)}
+${zapGroup('zapP', planetBolts)}
+<g class="power">${text('unlimited power!', 48, ey - 26, 2, '#bfe3ff')}</g>
 
 <g class="fade" style="animation-delay:2.8s">${text('come to the dark side', W - 48 - textWidth('come to the dark side', 2), H - 22, 2, '#8a3a22')}</g>
 </g>
